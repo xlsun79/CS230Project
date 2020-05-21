@@ -45,51 +45,51 @@ class PinballTask(nn.Module):
     Hand positions and velocities
     """
 
-    # Compute distances to targets
-    hx, hy = hand
-    dist_to_curr = torch.sqrt(
-        (hx - self.curr_tgx) ** 2 + (hy - self.curr_tgy) ** 2)
-    dist_to_next = torch.sqrt(
-        (hx - self.next_tgx) ** 2 + (hy - self.next_tgy) ** 2)
+        # Compute distances to targets
+        hx, hy = hand
+        dist_to_curr = torch.sqrt(
+            (hx - self.curr_tgx) ** 2 + (hy - self.curr_tgy) ** 2)
+        dist_to_next = torch.sqrt(
+            (hx - self.next_tgx) ** 2 + (hy - self.next_tgy) ** 2)
 
-    # Reach period
-    if self.go:
-        # assert False
+        # Reach period
+        if self.go:
+            # assert False
 
-        # Check for target acquired
-        if dist_to_next < self.move_targ_thres:
-            self.go = torch.tensor([False])
-            #self.target_index += 1
-            self.target_index = torch.randint(low = 0, high = len(TARGET_SEQUENCE), size = (1,1))
-            self.curr_tgx = self.next_tgx
-            self.curr_tgy = self.next_tgy
-            self.next_tgx = TARGET_SEQUENCE[self.target_index, 0]
-            self.next_tgy = TARGET_SEQUENCE[self.target_index, 1]
-            #                 self.next_tgx = self.padding + torch.rand(1) * (self.screen_size - 2 * self.padding)
-            #                 self.next_tgy = self.padding + torch.rand(1) * (self.screen_size - 2 * self.padding)
-            self.delay_left = np.random.uniform(self.min_delay, self.max_delay)
+            # Check for target acquired
+            if dist_to_next < self.move_targ_thres:
+                self.go = torch.tensor([False])
+                #self.target_index += 1
+                self.target_index = torch.randint(low = 0, high = len(TARGET_SEQUENCE), size = (1,1))
+                self.curr_tgx = self.next_tgx
+                self.curr_tgy = self.next_tgy
+                self.next_tgx = TARGET_SEQUENCE[self.target_index, 0]
+                self.next_tgy = TARGET_SEQUENCE[self.target_index, 1]
+                #                 self.next_tgx = self.padding + torch.rand(1) * (self.screen_size - 2 * self.padding)
+                #                 self.next_tgy = self.padding + torch.rand(1) * (self.screen_size - 2 * self.padding)
+                self.delay_left = np.random.uniform(self.min_delay, self.max_delay)
 
-        # Delay / Hold period
-    else:
-        # Check if hold is violated
-        if dist_to_curr >= self.hold_targ_thres:
-            self.delay_left = np.random.uniform(self.min_delay, self.max_delay)
+            # Delay / Hold period
         else:
-            self.delay_left -=1
+            # Check if hold is violated
+            if dist_to_curr >= self.hold_targ_thres:
+                self.delay_left = np.random.uniform(self.min_delay, self.max_delay)
+            else:
+                self.delay_left -=1
 
-        # Check if delay is done.
-        if self.delay_left <= 0:
-            self.go = torch.tensor([True])
+            # Check if delay is done.
+            if self.delay_left <= 0:
+                self.go = torch.tensor([True])
 
-    return torch.tensor([
-    self.go,
-    hx,
-    hy,
-    self.curr_tgx,
-    self.curr_tgy,
-    self.next_tgx,
-    self.next_tgy
-    ])[None, :]
+        return torch.tensor([
+            self.go,
+            hx,
+            hy,
+            self.curr_tgx,
+            self.curr_tgy,
+            self.next_tgx,
+            self.next_tgy
+        ])[None, :]
 
 class CenterOutTask(nn.Module):
 
