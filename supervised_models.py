@@ -114,7 +114,7 @@ class RNN_Recursive(nn.Module):
 
         # Output layers
         # Dropout -> Linear -> ReLU -> Lienear -> Acc
-        self.out_layer = nn.Sequential(nn.Dropout(p=dropout_p),nn.Linear(n_neurons, n_neurons), nn.ReLU(),nn.Linear(n_neurons, out_size))
+        self.out_layer = nn.Sequential(nn.Dropout(p=.2),nn.Linear(n_neurons, n_neurons), nn.ReLU(),nn.Linear(n_neurons, out_size))
 
 
     def forward(self, inp, h_old):
