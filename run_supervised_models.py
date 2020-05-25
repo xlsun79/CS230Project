@@ -186,7 +186,7 @@ class recursive_model():
             # train epoch (keep only acceleration infor for training)
             self.train_epoch(X.to(self.device),Y[:,:2,:].to(self.device),elastic_net_lamb)
             if verbose:
-                if epoch%100 == 0:
+                if epoch%10 == 0:
                     print("epoch",epoch,"loss",self.losses[-1])
 
 
@@ -221,11 +221,11 @@ class recursive_model():
             kin_buff.push(kin) # push outputs to buffer
             YHAT[:,:,t]=kin # save outputs
 
-        V,VHAT = torch.cumsum(Y,dim=2),torch.cumsum(YHAT,dim=2)/self.data_gen.Tx # estimated velocity and target velocity
-        D,DHAT = torch.cumsum(V,dim=2),torch.cumsum(VHAT,dim=2)/self.data_gen.Tx # estimated position and target position
+        V,VHAT = torch.cumsum(Y,dim=2),torch.cumsum(YHAT,dim=2) # estimated velocity and target velocity
+        D,DHAT = torch.cumsum(V,dim=2),torch.cumsum(VHAT,dim=2) # estimated position and target position
 
         # loss is on position from acceleration output
-        loss = elastic_net_lamb*(D-DHAT).pow(2).mean()+(1-elastic_net_lamb)*(D-DHAT).abs().mean() #+
+        loss = 1./self.data_gen.Tx/self.data_gen.Tx^elastic_net_lamb*(D-DHAT).pow(2).mean()+(1-elastic_net_lamb)*(D-DHAT).abs().mean() #+
 
         loss.backward() # calculate gradients
         self.optimizer.step() # backprop
