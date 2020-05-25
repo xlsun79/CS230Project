@@ -261,3 +261,22 @@ class recursive_model():
             return X.to("cpu"),Y.to("cpu"),YHAT.to("cpu")
         else:
             return X,Y,YHAT
+
+    def rt_curl(self,acc):
+        '''
+        Apply curl field to accelerations for models that get state information
+
+        ----------
+        Parameters
+        ----------
+        data_gen - RandomTargetTimeseries class instance
+        acc - torch.tensor
+            has shape (batch_size,2). Accelerations for given timepoints
+        '''
+        if self.data_gen.curl:
+            # if cursor location in curl field
+            mask = ((acc[:,-2]>=self.data_gen.curl_xlims[0]) & (acc[:,-2]<=self.data_gen.curl_xlims[1])) | ((acc[:,-1]>=self.data_gen.curl_ylims[0]) & (acc[:,-1]<=self.data_gen.curl_ylims[1]))
+
+            # apply field
+            acc[mask,:] += torch.from_numpy(np.array([self.data_gen.curl_xmag, self.data_gen.curl_ymag])[np.newaxis,:]).to(self.device)
+        return acc
