@@ -217,7 +217,7 @@ class recursive_model():
         for t in range(self.data_gen.Tx):
             INPUT = torch.cat([X[:,:,t],*kin_buff.buffer],dim=1) # concatenate targets and buffer
             kin,h = self.model.forward(INPUT,h)  # forward pass
-            kin = u.rt_curl(self.data_gen,kin) # apply curl field
+            kin = self.rt_curl(self.data_gen,kin) # apply curl field
             kin_buff.push(kin) # push outputs to buffer
             YHAT[:,:,t]=kin # save outputs
 
@@ -252,7 +252,7 @@ class recursive_model():
             with torch.no_grad(): # don't track gradients
                 INPUT = torch.cat([X[:,:,t],*kin_buff.buffer],dim=1) # concat targets and buffer
                 kin,h = self.model.forward(INPUT,h) # forward prop
-                kin = u.rt_curl(self.data_gen,kin)
+                kin = self.rt_curl(kin)
 
             kin_buff.push(kin) # push outputs to buffer
             YHAT[:,:,t]=kin
@@ -269,7 +269,6 @@ class recursive_model():
         ----------
         Parameters
         ----------
-        data_gen - RandomTargetTimeseries class instance
         acc - torch.tensor
             has shape (batch_size,2). Accelerations for given timepoints
         '''
