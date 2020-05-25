@@ -217,7 +217,7 @@ class recursive_model():
         for t in range(self.data_gen.Tx):
             INPUT = torch.cat([X[:,:,t],*kin_buff.buffer],dim=1) # concatenate targets and buffer
             kin,h = self.model.forward(INPUT,h)  # forward pass
-            kin = self.rt_curl(self.data_gen,kin) # apply curl field
+            kin = self.rt_curl(kin) # apply curl field
             kin_buff.push(kin) # push outputs to buffer
             YHAT[:,:,t]=kin # save outputs
 
