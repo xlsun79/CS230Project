@@ -225,7 +225,7 @@ class recursive_model():
         D,DHAT = torch.cumsum(V,dim=2),torch.cumsum(VHAT,dim=2) # estimated position and target position
 
         # loss is on position from acceleration output
-        loss = 1./self.data_gen.Tx/self.data_gen.Tx^elastic_net_lamb*(D-DHAT).pow(2).mean()+(1-elastic_net_lamb)*(D-DHAT).abs().mean() #+
+        loss = 1./self.data_gen.Tx/self.data_gen.Tx*elastic_net_lamb*(D-DHAT).pow(2).mean()+(1-elastic_net_lamb)*(D-DHAT).abs().mean() #+
 
         loss.backward() # calculate gradients
         self.optimizer.step() # backprop
