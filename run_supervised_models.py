@@ -48,14 +48,14 @@ class baseline_model():
         self.losses = []
         self.model = super_models.BaselineRNN(inp_size=inp_size,n_neurons=n_neurons,out_size=out_size,
                                                 rnn_nonlinearity=rnn_nonlinearity,
-                                                droput_p=droput_p).to(self.device)
+                                                dropout_p=dropout_p).to(self.device)
         self.data_gen = u.RandomTargetTimeseries(curl=curl) # data generator
         self.optimizer = torch.optim.Adam(self.model.parameters(),lr=lr)
         self.BATCH_SIZE = BATCH_SIZE
 
 
 
-    def train_baseline(self,N_TRAIN_EPOCHS,verbose=True):
+    def train(self,N_TRAIN_EPOCHS,verbose=True):
         '''
         run backprop on N_TRAIN_EPOCHS mini-batches
 
@@ -86,11 +86,11 @@ class baseline_model():
 
         self.model.train() # ensure dropout layers are turned on
         YHAT = torch.zeros(*Y.shape).to(self.device) # init estimates
-        h= torch.zeros(self.BATCH_SIZE,self.n_neurons,dtype=torch.float).to(self.device) # init hidden state
+        h= torch.zeros(self.BATCH_SIZE,self.model.n_neurons,dtype=torch.float).to(self.device) # init hidden state
         self.optimizer.zero_grad()
         for t in range(self.data_gen.Tx): # for each timepoint
-            kin, h = self.model.forward(X[:,:,t],self.h) # forward prop
-            YHAT[:,:,t]=kin + CURL
+            kin, h = self.model.forward(X[:,:,t],h) # forward prop
+            YHAT[:,:,t]=kin + CURL[:,:,t]
 
         loss = (Y - YHAT).pow(2).mean() + (Y-YHAT).abs().mean() # elastic net like loss to get steeper gradient near zero
         loss.backward() # compute gradients
@@ -107,13 +107,13 @@ class baseline_model():
         X,Y,CURL = self.data_gen.get_minibatch(m)
         X,Y,CURL = X.to(self.device),Y.to(self.device),CURL.to(self.device)
         YHAT = torch.zeros(*Y.shape).to(self.device)
-        h= torch.zeros(m,self.n_neurons,dtype=torch.float).to(self.device)
+        h= torch.zeros(m,self.model.n_neurons,dtype=torch.float).to(self.device)
 
         self.model.eval()
         for t in range(self.data_gen.Tx):
             with torch.no_grad():
-                kin, h = self.model.forward(X[:,:,t],self.h)
-            YHAT[:,:,t]=kin + CURL
+                kin, h = self.model.forward(X[:,:,t],h)
+            YHAT[:,:,t]=kin + CURL[:,:,t]
 
         if to_cpu_return:
             return X.to("cpu"),Y.to("cpu"),YHAT.to("cpu"),CURL.to("cpu")
@@ -131,35 +131,32 @@ class recursive_model():
 
     def __init__(self,inp_size=3,n_neurons=128,out_size=2,rnn_type = "gru",
                 dropout_p=.3,curl=False,lr = 3E-4,BATCH_SIZE=32,BUFFER_CAP=5):
-    '''
-    initialize model and Parameters
+        '''
+        initialize model and Parameters
 
-    ----------
-    Parameters
-    ----------
-    inp_size : int
-            input size without buffer, defaults to 3 (target position and go cue)
-    n_neurons: int
-            number of hidden units in each layer
-    out_size: int
-            number of outputs, defaults to 6 (target kinematics in 2D)
-    rnn_nonlinearity: string ['relu', 'tanh', 'gru']
-            lstm not implemented yet
-    dropout_p: float [0-1]
-            dropout percentage for fully connected layers
-    curl: bool
-            whether to include curl field
-            to edit curl field parameters see utilities.RandomTargetTimeseries docstring
-    lr : float
-            learning rate for Adam optimizer
-    BATCH_SIZE : int
-            number of training examples in each mini-batch
-    BUFFER_CAP : int
-            capacity of recent output buffer, determines input size to network
-
-    '''
-
-
+        ----------
+        Parameters
+        ----------
+        inp_size : int
+                input size without buffer, defaults to 3 (target position and go cue)
+        n_neurons: int
+                number of hidden units in each layer
+        out_size: int
+                number of outputs, defaults to 6 (target kinematics in 2D)
+        rnn_nonlinearity: string ['relu', 'tanh', 'gru']
+                lstm not implemented yet
+        dropout_p: float [0-1]
+                dropout percentage for fully connected layers
+        curl: bool
+                whether to include curl field
+                to edit curl field parameters see utilities.RandomTargetTimeseries docstring
+        lr : float
+                learning rate for Adam optimizer
+        BATCH_SIZE : int
+                number of training examples in each mini-batch
+        BUFFER_CAP : int
+                capacity of recent output buffer, determines input size to network
+        '''
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -169,14 +166,14 @@ class recursive_model():
         self.losses = []
         self.model = super_models.RNN_Recursive(inp_size=inp_size + 2*BUFFER_CAP,n_neurons=n_neurons,out_size=out_size,
                                                 rnn_type=rnn_type,
-                                                droput_p=droput_p).to(self.device)
+                                                dropout_p=dropout_p).to(self.device)
         self.data_gen = u.RandomTargetTimeseries(curl=curl)
         self.optimizer = torch.optim.Adam(self.model.parameters(),lr=lr)
         self.BATCH_SIZE = BATCH_SIZE
         self.BUFFER_CAP = BUFFER_CAP
 
 
-    def train_baseline(self,N_TRAIN_EPOCHS,verbose=True,elastic_net_lamb=.5):
+    def train(self,N_TRAIN_EPOCHS,verbose=True,elastic_net_lamb=.5):
         '''
         run backprop on N_TRAIN_EPOCHS mini-batches
         elastic_net_lamb : float
@@ -185,12 +182,12 @@ class recursive_model():
         '''
 
         for epoch in range(int(N_TRAIN_EPOCHS)):
-            X,Y,_ = self.data_gen.get_minibatch(BATCH_SIZE) # generate data
+            X,Y,_ = self.data_gen.get_minibatch(self.BATCH_SIZE) # generate data
             # train epoch (keep only acceleration infor for training)
             self.train_epoch(X.to(self.device),Y[:,:2,:].to(self.device),elastic_net_lamb)
             if verbose:
                 if epoch%100 == 0:
-                    print(self.losses[-1])
+                    print("epoch",epoch,"loss",self.losses[-1])
 
 
     def train_epoch(self,X,Y,elastic_net_lamb):
@@ -210,10 +207,10 @@ class recursive_model():
 
         self.model.train() # ensure dropout is turned on
         YHAT = torch.zeros(*Y.shape).to(self.device) # init estimates
-        h= torch.zeros(self.BATCH_SIZE,self.n_neurons,dtype=torch.float).to(self.device) # init hidden state
+        h= torch.zeros(self.BATCH_SIZE,self.model.n_neurons,dtype=torch.float).to(self.device) # init hidden state
         self.optimizer.zero_grad() # clear gradients
 
-        kin_buff = kinematics_buffer(self.BUFFER_CAP) # fill acceleartion buffer with zeros
+        kin_buff = u.data_buffer(self.BUFFER_CAP) # fill acceleartion buffer with zeros
         for b in range(self.BUFFER_CAP):
           kin_buff.push(torch.zeros(self.BATCH_SIZE,2,dtype=torch.float).to(self.device))
 
@@ -246,10 +243,10 @@ class recursive_model():
         X,Y = X.to(self.device),Y[:,:2,:].to(self.device)
         YHAT = torch.zeros(*Y.shape).to(self.device)
 
-        h= torch.zeros(self.BATCH_SIZE,self.n_neurons,dtype=torch.float).to(self.device)
-        kin_buff = kinematics_buffer(BUFF_CAP) # fill acceleration buffer
-        for b in range(BUFF_CAP):
-          kin_buff.push(torch.zeros(BATCH_SIZE,2,dtype=torch.float).to(self.device))
+        h= torch.zeros(m,self.model.n_neurons,dtype=torch.float).to(self.device)
+        kin_buff = u.data_buffer(self.BUFFER_CAP) # fill acceleration buffer
+        for b in range(self.BUFFER_CAP):
+          kin_buff.push(torch.zeros(m,2,dtype=torch.float).to(self.device))
 
         for t in range(self.data_gen.Tx):
             with torch.no_grad(): # don't track gradients

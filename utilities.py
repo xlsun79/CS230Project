@@ -130,4 +130,4 @@ class RandomTargetTimeseries():
             CURL[:,5,:]=np.cumsum(np.cumsum(curly,axis=-1),axis=-1)/self.scale_derivs/self.scale_derivs
 
         # create curl
-        return torch.from_numpy(X,dtype=torch.float), torch.from_numpy(Y,dtype=torch.float), torch.from_numpy(CURL,dtype=torch.float)
+        return torch.from_numpy(X).to(dtype=torch.float), torch.from_numpy(Y).to(dtype=torch.float), torch.from_numpy(CURL).to(dtype=torch.float)

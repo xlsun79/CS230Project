@@ -14,7 +14,7 @@ class BaselineRNN(nn.Module):
 
     '''
 
-    def __init__(self, inp_size=3, n_neurons=128, out_size=6, rnn_nonlinearity = 'relu',droput_p=.3):
+    def __init__(self, inp_size=3, n_neurons=128, out_size=6, rnn_nonlinearity = 'relu',dropout_p=.3):
         '''
         Initialize layers to reuse during each timestep
 
@@ -99,8 +99,8 @@ class RNN_Recursive(nn.Module):
 
         # Input layers
         # Linear -> ReLU -> Dropout -> Linear -> ReLU -> Dropout
-        self.in_layer = nn.Sequential(nn.Linear(inp_size,n_neurons),nn.ReLU(),nn.Dropout(p=droput_p),
-                                    nn.Linear(n_neurons,n_neurons),nn.ReLU(),nn.Dropout(p=droput_p))
+        self.in_layer = nn.Sequential(nn.Linear(inp_size,n_neurons),nn.ReLU(),nn.Dropout(p=dropout_p),
+                                    nn.Linear(n_neurons,n_neurons),nn.ReLU(),nn.Dropout(p=dropout_p))
 
         # Recurrent layer
         if rnn_type == "gru":
@@ -114,7 +114,7 @@ class RNN_Recursive(nn.Module):
 
         # Output layers
         # Dropout -> Linear -> ReLU -> Lienear -> Acc
-        self.out_layer = nn.Sequential(nn.Dropout(p=.2),nn.Linear(n_neurons, n_neurons), nn.ReLU(),nn.Linear(n_neurons, out_size))
+        self.out_layer = nn.Sequential(nn.Dropout(p=dropout_p),nn.Linear(n_neurons, n_neurons), nn.ReLU(),nn.Linear(n_neurons, out_size))
 
 
     def forward(self, inp, h_old):
