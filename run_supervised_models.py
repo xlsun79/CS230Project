@@ -108,17 +108,18 @@ class baseline_model():
         X,Y,CURL = X.to(self.device),Y.to(self.device),CURL.to(self.device)
         YHAT = torch.zeros(*Y.shape).to(self.device)
         h= torch.zeros(m,self.model.n_neurons,dtype=torch.float).to(self.device)
+        hidden = torch.empty(m,self.model.n_neurons,self.data_gen.Tx,dtype=torch.float).to(self.device)
 
         self.model.eval()
         for t in range(self.data_gen.Tx):
             with torch.no_grad():
                 kin, h = self.model.forward(X[:,:,t],h)
             YHAT[:,:,t]=kin + CURL[:,:,t]
-
+            hidden[:,:,t] = h
         if to_cpu_return:
-            return X.to("cpu"),Y.to("cpu"),YHAT.to("cpu"),CURL.to("cpu")
+            return X.to("cpu"),Y.to("cpu"),YHAT.to("cpu"),CURL.to("cpu"),hidden.to("cpu")
         else:
-            return X,Y,YHAT,CURL
+            return X,Y,YHAT,CURL,hidden
 
 
 class recursive_model():
@@ -242,7 +243,7 @@ class recursive_model():
         X,Y,_ = self.data_gen.get_minibatch(m) # get test data
         X,Y = X.to(self.device),Y[:,:2,:].to(self.device)
         YHAT = torch.zeros(*Y.shape).to(self.device)
-
+        hidden = torch.empty(m,self.model.n_neurons,self.data_gen.Tx,dtype=torch.float).to(self.device)
         h= torch.zeros(m,self.model.n_neurons,dtype=torch.float).to(self.device)
         kin_buff = u.data_buffer(self.BUFFER_CAP) # fill acceleration buffer
         for b in range(self.BUFFER_CAP):
@@ -256,11 +257,11 @@ class recursive_model():
 
             kin_buff.push(kin) # push outputs to buffer
             YHAT[:,:,t]=kin
-
+            hidden[:,:,t] = h
         if to_cpu_return:
-            return X.to("cpu"),Y.to("cpu"),YHAT.to("cpu")
+            return X.to("cpu"),Y.to("cpu"),YHAT.to("cpu"),hidden.to("cpu")
         else:
-            return X,Y,YHAT
+            return X,Y,YHAT,hidden
 
     def rt_curl(self,acc):
         '''
@@ -278,4 +279,5 @@ class recursive_model():
 
             # apply field
             acc[mask,:] += torch.from_numpy(np.array([self.data_gen.curl_xmag, self.data_gen.curl_ymag])[np.newaxis,:]).to(self.device)
+            acc.to(dtype=torch.float64)
         return acc

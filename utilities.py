@@ -3,6 +3,16 @@ import torch
 from collections import deque
 import math, random
 
+N_TARGETS_CO = 8
+RADIUS = 40
+
+def createCenterOutTargets(r, N_TARGETS):
+    target = torch.empty(N_TARGETS, 2)
+    for i in range(N_TARGETS):
+        target[i,0] = r * np.cos(np.pi*2*i/N_TARGETS)
+        target[i,1] = r * np.sin(np.pi*2*i/N_TARGETS)
+    return target
+
 
 def rt_curl(data_gen,acc):
     '''
@@ -56,7 +66,7 @@ class RandomTargetTimeseries():
         self.T_on = 20
         self.T_off = 100
         self.max_go_delay = 10
-        self.width_go_cue=5
+        self.width_go_cue=5 # could try varying the go_cue width
         self.tau=3 # time constant for generating sigmoidal movements
         self.scale_derivs = 10.
 
@@ -87,18 +97,23 @@ class RandomTargetTimeseries():
 
 
         # generate m random target positions
-        targ_pos = (self.max_pos-self.min_pos)*np.random.rand(m,2)+self.min_pos
+#         targ_pos = (self.max_pos-self.min_pos)*np.random.rand(m,2)+self.min_pos #Pinball task.
+        targets = createCenterOutTargets(RADIUS, N_TARGETS_CO) #Centerout task.
+        index  = np.random.randint(8,size = m)
+        targ_pos = np.zeros([m,2])
+        for i in range(m):
+            targ_pos[i,:] = targets[index[i],:]
         # go-signal times
         go_time = self.T_on + np.random.randint(self.max_go_delay,size=[m,1])
 
 
         # create input timeseries
         X = np.zeros((m,3,self.Tx))
-        X[:,:2,self.T_on:self.T_off] = targ_pos[:,:,np.newaxis]
+        X[:,:2,self.T_on:self.T_off] = targ_pos[:,:,np.newaxis] # target x y positions inherited from targ_pos
         for i in range(self.width_go_cue): # Start cue
             X[:,2,go_time.ravel()+i] = 10
 
-        # create output timeseries
+        # create output timeseries (the target cursor kinematics as the goal of training)
         t = np.linspace(0,self.Tx,num=self.Tx)[np.newaxis,np.newaxis,:]
         pos = targ_pos[:,:,np.newaxis]/(1+np.exp(-(t-5*self.tau - go_time[:,:,np.newaxis])/self.tau)) # smooth sigmoidal reach
         vel = self.scale_derivs*np.diff(pos,prepend=0) # calculate velocity as derivative, scale up for training
